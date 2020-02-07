@@ -1,5 +1,5 @@
 ﻿using System;
-namespace cl_ordering
+namespace CLOrdering
 {
     public class Order
     {

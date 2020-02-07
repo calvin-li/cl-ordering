@@ -2,8 +2,9 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 
-namespace cl_ordering
+namespace CLOrdering
 {
     class Program
     {
@@ -15,10 +16,10 @@ namespace cl_ordering
             options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
             var menuItems = JsonSerializer.Deserialize<Item[]>(jsonString, options);
 
-            OrderMaker OrderMaker = new OrderMaker(menuItems);
+            OrderMaker Orderer = new OrderMaker(menuItems);
+            Orderer.Start();
 
-            Console.WriteLine("Press any key to exit");
-            Console.ReadLine();
+            Task.Delay(-1).Wait();
         }
     }
 }
