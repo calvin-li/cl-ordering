@@ -8,7 +8,7 @@ namespace CLOrdering
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
             string jsonString = File.ReadAllText("Data/Samples.json");
 

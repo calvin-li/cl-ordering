@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <Folder Include="Data\" />
+    <Folder Include="DataClasses\" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="Data\Engineering_Challenge_-_Orders.json" />
