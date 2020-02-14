@@ -16,9 +16,12 @@ namespace CLOrdering
             options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
             var menuItems = JsonSerializer.Deserialize<Item[]>(jsonString, options);
 
+            Kitchen CloudKitchen = new Kitchen();
             OrderMaker Orderer = new OrderMaker(menuItems);
-            Orderer.Start();
+            Orderer.OrderPlacedEvent += CloudKitchen.ReceiveOrder;
 
+            Orderer.Start();
+            Console.WriteLine("Started app. Press Ctrl-C to exit");
             Task.Delay(-1).Wait();
         }
     }

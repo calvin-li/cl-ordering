@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Threading.Tasks;
 
 [assembly: InternalsVisibleTo("UnitTests")]
@@ -8,23 +8,44 @@ namespace CLOrdering
 {
     public class OrderMaker
     {
-        public static readonly double lambda = 3.250;
+        public readonly double lambda = 3.250;
 
         readonly Item[] Items;
-        Random Rng = new Random();
+        readonly Random Rng = new Random();
+        bool running = false;
+
+        public event EventHandler<OrderEventArgs> OrderPlacedEvent;
 
         public OrderMaker(Item[] items)
         {
             this.Items = items;
         }
 
-        public delegate void NewOrder();
-        public event EventHandler<OrderEventArgs> PlaceOrderEvent;
+        // for testing
+        internal OrderMaker(Item[] items, double lambda) : this(items)
+        {
+            this.lambda = lambda;
+        }
 
         internal void Start()
         {
-            PlaceOrderEvent += PlaceNextOrder;
-            PlaceOrderEvent?.Invoke(this, CreateNewOrder());
+            running = true;
+            PlaceOrders();
+        }
+
+        async void PlaceOrders()
+        {
+            while (running)
+            {
+                OrderEventArgs nextOrder = CreateNewOrder();
+                Console.WriteLine("Placing order: " + nextOrder.Order.Item.Name);
+                OrderPlacedEvent?.Invoke(this, nextOrder);
+
+                double delay = ExpCdfInv(Rng.NextDouble(), lambda);
+                Console.WriteLine("\tDelay: " + delay);
+                await Task.Delay(Convert.ToInt32(delay * 1000)).ConfigureAwait(false);
+            }
+
         }
 
         private OrderEventArgs CreateNewOrder()
@@ -32,18 +53,9 @@ namespace CLOrdering
             return new OrderEventArgs(this.Items[Rng.Next(Items.Length)]);
         }
 
-        async void PlaceNextOrder(object sender, OrderEventArgs o)
-        {
-            double delay = ExpCdfInv(Rng.NextDouble());
-            Console.WriteLine("Will place next order after " + delay + " seconds");
-
-            await Task.Delay(Convert.ToInt32(delay*1000)).ConfigureAwait(false);
-            PlaceOrderEvent?.Invoke(sender, CreateNewOrder());
-        }
-
         // Given a percentile, returns an amount of seconds based on Poisson distribution
         // See README for more details
-        internal static double ExpCdfInv(double percentile)
+        internal static double ExpCdfInv(double percentile, double lambda)
         {
             percentile -= double.Epsilon;
             return Math.Log(percentile) / -lambda;

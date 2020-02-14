@@ -3,9 +3,9 @@ namespace CLOrdering
 {
     public class Order
     {
-        Item Item = new Item();
-        DateTime OrderTime = DateTime.Now;
-        Guid Id = new Guid();
+        internal readonly Item Item = new Item();
+        internal readonly DateTime OrderTime = DateTime.Now;
+        internal readonly Guid Id = Guid.NewGuid();
 
         public Order()
         {
