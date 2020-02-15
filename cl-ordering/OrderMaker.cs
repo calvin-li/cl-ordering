@@ -8,7 +8,7 @@ namespace CLOrdering
 {
     public class OrderMaker
     {
-        public readonly double lambda = 3.250;
+        private readonly double lambda = 3.250;
 
         readonly Item[] Items;
         readonly Random Rng = new Random();
@@ -38,11 +38,11 @@ namespace CLOrdering
             while (running)
             {
                 OrderEventArgs nextOrder = CreateNewOrder();
-                Console.WriteLine("Placing order: " + nextOrder.Order.Item.Name);
+                //Console.WriteLine("Placing order: " + nextOrder.Order.Item.Name);
                 OrderPlacedEvent?.Invoke(this, nextOrder);
 
                 double delay = ExpCdfInv(Rng.NextDouble(), lambda);
-                Console.WriteLine("\tDelay: " + delay);
+                //Console.WriteLine("\tDelay: " + delay);
                 await Task.Delay(Convert.ToInt32(delay * 1000)).ConfigureAwait(false);
             }
 
