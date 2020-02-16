@@ -30,10 +30,5 @@ namespace CLOrdering
         public Temp Temperature { get; set; } = Temp.None;
         public int ShelfLife { get; set; } = 0;
         public double DecayRate { get; set; } = 0.0;
-
-        public override string ToString()
-        {
-            return string.Format("{0} / {1}", Name, Temperature);
-        }
     }
 }

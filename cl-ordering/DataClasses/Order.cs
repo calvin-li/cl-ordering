@@ -3,13 +3,16 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace CLOrdering
 {
-    public class Order: IComparable<Order>
+    public class Order
     {
         internal readonly Item Item = new Item();
         internal readonly DateTime OrderTime = DateTime.Now;
-        internal readonly Guid Id = Guid.NewGuid();
-        internal double Value = 0;
+        internal readonly int Id = 0;
+        internal int Value = 0;
+        internal DateTime Updated = DateTime.Now;
         internal double Ttl = 0;
+
+        internal static Order EmptyOrder = new Order();
 
         public Order()
         {
@@ -19,23 +22,17 @@ namespace CLOrdering
         {
             this.Item = item;
             this.Value = this.Item.ShelfLife;
+            Id = Convert.ToInt32(OrderTime.Ticks % 10000) + 1;  // ID 0 is reserved for EmptyOrder
         }
 
-        public Order(Item item, DateTime dateTime)
+        public Order(Item item, DateTime dateTime):this(item)
         {
-            this.Item = item;
             this.OrderTime = dateTime;
-        }
-
-        public int CompareTo([AllowNull] Order other)
-        {
-            return this.Value.CompareTo(other.Value);
         }
 
         public override string ToString()
         {
-            return string.Format("\tid: {0}\n\t{1} / {2}\n",
-                Id, Item, Item.ShelfLife / Value);
+            return string.Format("{0}: {1} / {2}", Id, Item.Name, Item.Temperature.ToString()[0]);
         }
     }
 }

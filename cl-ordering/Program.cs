@@ -18,9 +18,11 @@ namespace CLOrdering
 
             Kitchen CloudKitchen = new Kitchen();
             OrderMaker Orderer = new OrderMaker(menuItems);
-            Orderer.OrderPlacedEvent += CloudKitchen.ReceiveOrder;
+            Orderer.OrderPlacedEvent += CloudKitchen.OnOrderReceived;
 
             Orderer.Start();
+
+            Console.SetCursorPosition(0, 0);
             Console.WriteLine("Started app. Press Ctrl-C to exit");
             Task.Delay(-1).Wait();
         }
