@@ -8,7 +8,7 @@ namespace CLOrdering
         internal readonly Item Item = new Item();
         internal readonly DateTime OrderTime = DateTime.Now;
         internal readonly int Id = 0;
-        internal int Value = 0;
+        internal double Value = 0.0;
         internal DateTime Updated = DateTime.Now;
         internal double Ttl = 0;
 
@@ -32,7 +32,7 @@ namespace CLOrdering
 
         public override string ToString()
         {
-            return string.Format("{0}: {1} / {2}", Id, Item.Name, Item.Temperature.ToString()[0]);
+            return string.Format("{0}: {1}", Id, Item.Name);
         }
     }
 }

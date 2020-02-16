@@ -22,6 +22,7 @@ namespace CLOrdering
 
             Orderer.Start();
 
+            Console.CursorVisible = false;
             Console.SetCursorPosition(0, 0);
             Console.WriteLine("Started app. Press Ctrl-C to exit");
             Task.Delay(-1).Wait();
