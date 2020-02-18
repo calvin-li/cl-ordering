@@ -29,7 +29,7 @@ namespace UnitTests
 
             testKitchen.ShelveOrder(new OrderEventArgs(testOrder));
             Temp testTemp = testOrder.Item.Temperature;
-            Assert.IsTrue(testKitchen.defaultShelves[testTemp].Contains(testOrder));
+            Assert.IsTrue(testKitchen.DefaultShelves[testTemp].Contains(testOrder));
         }
     }
 }

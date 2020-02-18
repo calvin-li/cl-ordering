@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -9,52 +10,46 @@ namespace CLOrdering
 {
     public class Kitchen
     {
-        internal class OrderCollection : List<Order>
+        internal class OrderCollection : ConcurrentDictionary<int, Order>
         {
             internal readonly int MaxOrders;
             internal readonly string Name;
+            internal Order[] array;
 
             internal OrderCollection(int capacity, string name)
             {
                 this.MaxOrders = capacity;
+                this.Name = name;
+                this.array = new Order[capacity];
                 for (int i = 0; i < capacity; i++)
                 {
-                    this.Add(Order.EmptyOrder);
+                    this[i] = Order.EmptyOrder;
                 }
-                this.Name = name;
             }
 
             internal bool HasRoom() => this.NumOrders() < MaxOrders;
 
-            internal int NumOrders() => this.Count(x => x != Order.EmptyOrder);
+            internal int NumOrders() => this.Count(x => x.Value != Order.EmptyOrder);
         }
 
         const int defaultShelfCapacity = 15;
         const int overFlowShelfCapacity = 20;
 
-        static readonly Temp[] TempArray = (Temp[])Enum.GetValues(typeof(Temp));
-        internal Dictionary<Temp, OrderCollection> defaultShelves =
+        internal static readonly Temp[] TempArray = (Temp[])Enum.GetValues(typeof(Temp));
+        internal Dictionary<Temp, OrderCollection> DefaultShelves =
             new Dictionary<Temp, OrderCollection>(TempArray.Where(x => x != Temp.None)
                 .Select(x => new KeyValuePair<Temp, OrderCollection>(
                     x, new OrderCollection(defaultShelfCapacity, x.ToString()))));
         internal OrderCollection OverFLowShelf = new OrderCollection(overFlowShelfCapacity, "Overflow");
         internal OrderCollection WastedOrders = new OrderCollection(0, "Waste");
 
-        const int columnWidth = 54;
-        const int rowHeight = 3;
-        const int leftHeaderSpace = 8;
-        const int topHeaderSpace = 4;
-        const int progressWidth = columnWidth - 12;
-        static readonly string clear = string.Join("", Enumerable.Repeat(' ', columnWidth));
-
-        HashSet<Task> OrderUpdates = new HashSet<Task>();
-
         public event EventHandler<OrderEventArgs> OrderExpiredEvent;
+        readonly Display Display;
 
         public Kitchen()
         {
-            DrawHeaders();
-            Update();
+            Display = new Display(DefaultShelves, OverFLowShelf);
+            UpdateVal();
         }
 
         async internal void OnOrderReceived(object sender, OrderEventArgs o)
@@ -66,17 +61,20 @@ namespace CLOrdering
         {
             Order newOrder = args.Order;
             Temp orderTemp = newOrder.Item.Temperature;
-            OrderCollection newOrderShelf = defaultShelves[orderTemp].HasRoom() ?
-                defaultShelves[orderTemp] : OverFLowShelf.HasRoom() ?
+            OrderCollection newOrderShelf = DefaultShelves[orderTemp].HasRoom() ?
+                DefaultShelves[orderTemp] : OverFLowShelf.HasRoom() ?
                     OverFLowShelf : WastedOrders;
 
             if (newOrderShelf != WastedOrders)
             {
-                int index = newOrderShelf.FindIndex(x => x == Order.EmptyOrder);
+                int index = newOrderShelf.First(x => x.Value == Order.EmptyOrder).Key;
                 newOrderShelf[index] = newOrder;
                 //Console.WriteLine("Added new order: " + newOrder.Item.Name);
 
-                OrderUpdates.Add(new Task( () => DrawOrder(newOrder, index, newOrderShelf == OverFLowShelf)));
+                bool overflow = newOrderShelf == OverFLowShelf;
+                int column = GetColumn(newOrder, overflow);
+                IEnumerable<string> newOrderString = Display.GetOrderString(newOrder, overflow);
+                Display.AddToQueue(newOrder, index, column, newOrderString);
             }
             else
             {
@@ -84,145 +82,53 @@ namespace CLOrdering
             }
         }
 
-        private void DrawHeaders()
+        private async void UpdateVal()
         {
-            int i = 0;
-            foreach (OrderCollection shelf in defaultShelves.Values.Prepend(OverFLowShelf))
+            while (true)
             {
-                int cursorX = i++ * columnWidth + leftHeaderSpace;
-                DisplayAtPos(cursorX, 2, string.Format("{0} Shelf ({1}):", shelf.Name, shelf.NumOrders()));
-            }
-
-            for(i=0; i<Math.Max(defaultShelfCapacity, overFlowShelfCapacity); i++)
-            {
-                int cursorY = topHeaderSpace + i * rowHeight;
-                DisplayAtPos(0, cursorY, (i+1) + ".");
-            }
-        }
-
-        private void DrawOrder(Order order, int index, bool overflow)
-        {
-            int column = overflow ? 0 : Array.IndexOf(TempArray, order.Item.Temperature);
-            int cursorX = column * columnWidth + leftHeaderSpace;
-            int cursorY = index * rowHeight + topHeaderSpace;
-
-            UpdateHeader(column);
-
-            string orderString = order.ToString();
-            if (overflow)
-            {
-                orderString += " (" + order.Item.Temperature.ToString()[0] + ")";
-            }
-
-            DisplayAtPos(cursorX, cursorY, clear);
-            DisplayAtPos(cursorX, cursorY++, orderString);
-            
-            string progessbar = string.Join("", Enumerable.Repeat('=', progressWidth));
-            DisplayAtPos(cursorX, cursorY, "[" + progessbar + "]" + order.Item.ShelfLife);
-        }
-
-        private async void Update()
-        {
-            await Task.Run(async () =>
-            {
-                while (true)
+                int j = 0;
+                foreach (OrderCollection shelf in DefaultShelves.Values.Prepend(OverFLowShelf))
                 {
-                    UpdateOrders();
-                    UpdateProgress();
-                    await Task.Delay(16).ConfigureAwait(false);
-                }
-            }).ConfigureAwait(false);
-        }
-
-        private void UpdateOrders()
-        {
-            Task[] updates = new Task[OrderUpdates.Count];
-            OrderUpdates.CopyTo(updates);
-            foreach (Task t in updates)
-            {
-                t.Start();
-                t.Wait();
-                OrderUpdates.Remove(t);
-            }
-        }
-
-        private void UpdateHeader(int column)
-        {
-            int cursorY = 2;
-            OrderCollection shelf = defaultShelves.Values.Prepend(OverFLowShelf).ToArray()[column];
-
-            int cursorX = leftHeaderSpace + column * columnWidth + (shelf.Name + " Shelf (").Length;
-            DisplayAtPos(cursorX, cursorY, "    ");
-            DisplayAtPos(cursorX, cursorY, shelf.NumOrders() + "):");
-
-        }
-
-        private void UpdateProgress()
-        {
-            int j = 0;
-            foreach (OrderCollection shelf in defaultShelves.Values.Prepend(OverFLowShelf))
-            {
-                for (int i = 0; i < shelf.MaxOrders; i++)
-                {
-                    Order order = shelf[i];
-                    if(order != Order.EmptyOrder)
+                    for (int i = 0; i < shelf.MaxOrders; i++)
                     {
-                        UpdateProgress(order, i, j, shelf == OverFLowShelf);
+                        Order order = shelf[i];
+                        if (order != Order.EmptyOrder)
+                        {
+                            UpdateVal(order, i, shelf == OverFLowShelf);
+                        }
                     }
+                    j += 1;
                 }
-                j += 1;
+                await Task.Delay(16).ConfigureAwait(false);
             }
         }
 
-        private static void UpdateProgress(Order order, int row, int col, bool overflow)
+        private void UpdateVal(Order order, int index, bool overflow)
         {
-            if (order.Value > 0)
+            double age = (DateTime.Now - order.Updated).TotalSeconds;
+            order.Value -= age * (1 + order.Item.DecayRate * (overflow ? 2 : 1));
+
+            if (order.Value <= 0)
             {
-                
-                double age = (DateTime.Now - order.Updated).TotalSeconds;
-                order.Value -= age * (1 + order.Item.DecayRate);
+                if (overflow)
+                {
+                    OverFLowShelf[index] = Order.EmptyOrder;
+                }
+                else
+                {
+                    DefaultShelves[order.Item.Temperature][index] = Order.EmptyOrder;
+                }
+                Display.RemoveOrder(index, GetColumn(order, overflow));
+            }
+            else
+            {
                 order.Updated = DateTime.Now;
-                
-
-                double normVal = order.Value * 1.0 / order.Item.ShelfLife;
-                int progress = Math.Max(Convert.ToInt32(Math.Ceiling(normVal * progressWidth)), 0);
-
-                int cursorX = leftHeaderSpace + col * columnWidth + 1 + progress;
-                int cursorY = topHeaderSpace + row * rowHeight + 1;
-
-                string progressString = string.Join("", Enumerable.Repeat(" ", progressWidth - progress));
-                if(normVal < 0.99 && progressString.Length < progressWidth)
-                {
-                    DisplayAtPos(cursorX-1, cursorY, "-");
-                }
-
-                int numDigits = 3;
-                if (order.Value < 10)
-                {
-                    numDigits = 1;
-                }
-                else if (order.Value < 100)
-                {
-                    numDigits = 2;
-                }
-
-                if(progressString.Length >= numDigits + 1 && order.Value > 0)
-                {
-                    progressString = Convert.ToInt32(order.Value) + 
-                        " " + progressString.Substring(numDigits + 1);
-                    if(progress + progressString.Length > progressWidth)
-                    {
-                        progressString = progressString.Remove(progressString.Length - 1);
-                    }
-                }
-                DisplayAtPos(cursorX, cursorY, progressString);
             }
         }
 
-        private static void DisplayAtPos(int x, int y, string str)
+        private static int GetColumn(Order order, bool overflow)
         {
-            Console.SetCursorPosition(x, y);
-            Console.Write(str);
+            return overflow ? 0 : Array.IndexOf(TempArray, order.Item.Temperature);
         }
     }
 }
