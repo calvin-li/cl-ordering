@@ -43,7 +43,6 @@ namespace CLOrdering
         internal OrderCollection OverFLowShelf = new OrderCollection(overFlowShelfCapacity, "Overflow");
         internal OrderCollection WastedOrders = new OrderCollection(0, "Waste");
 
-        public event EventHandler<OrderEventArgs> OrderExpiredEvent;
         readonly Display Display;
 
         public Kitchen()
@@ -54,12 +53,11 @@ namespace CLOrdering
 
         async internal void OnOrderReceived(object sender, OrderEventArgs o)
         {
-            await Task.Run(() => ShelveOrder(o)).ConfigureAwait(false);
+            await Task.Run(() => ShelveOrder(o.Order)).ConfigureAwait(false);
         }
 
-        internal void ShelveOrder(OrderEventArgs args)
+        internal void ShelveOrder(Order newOrder)
         {
-            Order newOrder = args.Order;
             Temp orderTemp = newOrder.Item.Temperature;
             OrderCollection newOrderShelf = DefaultShelves[orderTemp].HasRoom() ?
                 DefaultShelves[orderTemp] : OverFLowShelf.HasRoom() ?
@@ -110,19 +108,53 @@ namespace CLOrdering
 
             if (order.Value <= 0)
             {
-                if (overflow)
+                UnshelveOrder(order, index, overflow);
+                if (!overflow)
                 {
-                    OverFLowShelf[index] = Order.EmptyOrder;
+                    PromoteOrder(order.Item.Temperature);
                 }
-                else
-                {
-                    DefaultShelves[order.Item.Temperature][index] = Order.EmptyOrder;
-                }
-                Display.RemoveOrder(index, GetColumn(order, overflow));
             }
             else
             {
                 order.Updated = DateTime.Now;
+            }
+        }
+
+        private void UnshelveOrder(Order order, int index, bool overflow)
+        {
+            if (overflow)
+            {
+                OverFLowShelf[index] = Order.EmptyOrder;
+            }
+            else
+            {
+                DefaultShelves[order.Item.Temperature][index] = Order.EmptyOrder;
+            }
+            Display.RemoveOrder(index, GetColumn(order, overflow));
+        }
+
+        private void PromoteOrder(Temp temp)
+        {
+            double minLife = double.PositiveInfinity;
+            int minIndex = -1;
+            for(int i=0; i<overFlowShelfCapacity; i++)
+            {
+                Order order = OverFLowShelf[i];
+                if (order != Order.EmptyOrder && order.Item.Temperature == temp)
+                {
+                    double lifeLeft = order.Value / (1 + 2 * order.Item.DecayRate);
+                    if (lifeLeft < minLife)
+                    {
+                        minLife = lifeLeft;
+                        minIndex = i;
+                    }
+                }
+            }
+
+            if (minIndex >= 0)
+            {
+                ShelveOrder(OverFLowShelf[minIndex]);
+                UnshelveOrder(OverFLowShelf[minIndex], minIndex, true);
             }
         }
 

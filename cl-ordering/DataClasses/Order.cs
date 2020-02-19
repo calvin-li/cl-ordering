@@ -10,7 +10,6 @@ namespace CLOrdering
         internal readonly int Id = 0;
         internal double Value = 0.0;
         internal DateTime Updated = DateTime.Now;
-        internal double Ttl = 0;
 
         internal static Order EmptyOrder = new Order();
 
@@ -32,7 +31,7 @@ namespace CLOrdering
 
         public override string ToString()
         {
-            return string.Format("{0}: {1}", Id, Item.Name);
+            return string.Format("#{0}: {1}", Id, Item.Name);
         }
     }
 }

@@ -146,14 +146,20 @@ namespace CLOrdering
 
         private static void UpdateProgress(Order order, int row, int col)
         {
-            double normVal = order.Value * 1.0 / order.Item.ShelfLife;
+            double normVal = order.Value / order.Item.ShelfLife;
             int progress = Math.Max(Convert.ToInt32(Math.Ceiling(normVal * progressWidth)), 0);
 
-            int cursorX = leftHeaderSpace + col * columnWidth + progress;
+            int cursorX = leftHeaderSpace + col * columnWidth + progress + 1;
             int cursorY = topHeaderSpace + row * rowHeight + 1;
 
-            string progressString = "] " + Convert.ToInt32(order.Value).ToString() + " ";
-            DisplayAtPos(cursorX, cursorY, progressString);
+            if (progress < progressWidth-1)
+            {
+                string progressString = string.Join("", Enumerable.Repeat(" ", progressWidth - progress - 1));
+                DisplayAtPos(cursorX, cursorY, progressString);
+            }
+
+            cursorX = leftHeaderSpace + col * columnWidth + progressWidth + 1;
+            DisplayAtPos(cursorX, cursorY, " " + Convert.ToInt32(order.Value).ToString() + "   ");
         }
 
         private static void DisplayAtPos(int x, int y, string str)
