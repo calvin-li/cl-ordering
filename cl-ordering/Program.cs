@@ -19,6 +19,7 @@ namespace CLOrdering
             Kitchen CloudKitchen = new Kitchen();
             OrderMaker Orderer = new OrderMaker(menuItems);
             Orderer.OrderPlacedEvent += CloudKitchen.OnOrderReceived;
+            Fleet.OrderPickupEvent += CloudKitchen.OnOrderPickup;
 
             Orderer.Start();
 

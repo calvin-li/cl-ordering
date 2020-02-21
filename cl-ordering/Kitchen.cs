@@ -56,6 +56,30 @@ namespace CLOrdering
             await Task.Run(() => ShelveOrder(o.Order)).ConfigureAwait(false);
         }
 
+        internal void OnOrderPickup(object sender, OrderEventArgs o)
+        {
+            for(int i=0; i<overFlowShelfCapacity; i++)
+            {
+                if (OverFLowShelf[i].Id == o.Order.Id)
+                {
+                    UnshelveOrder(OverFLowShelf[i], i, true);
+                    return;
+                }
+            }
+
+            foreach (OrderCollection shelf in DefaultShelves.Values)
+            {
+                for (int i = 0; i < overFlowShelfCapacity; i++)
+                {
+                    if (shelf[i].Id == o.Order.Id)
+                    {
+                        UnshelveOrder(shelf[i], i, true);
+                        return;
+                    }
+                }
+            }
+        }
+
         internal void ShelveOrder(Order newOrder)
         {
             Temp orderTemp = newOrder.Item.Temperature;
